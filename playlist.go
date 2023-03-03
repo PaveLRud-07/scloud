@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -46,6 +47,8 @@ func buttons(a string, arr *playlist, c chan bool, e chan string) {
 		c <- true
 	case "play":
 		fmt.Print("play")
+	case "exit":
+		os.Exit(0)
 	}
 }
 
@@ -99,6 +102,7 @@ func PlayAll(arr playlist, e chan string) {
 	fmt.Println("pause - дял паузы")
 	fmt.Println("add - для добавления трека в конец")
 	fmt.Println("next - для следующего трека")
+	fmt.Println("exit - для следующего трека")
 	var a, p string
 	check := make(chan bool)
 	for _, v := range arr {
@@ -110,6 +114,20 @@ func PlayAll(arr playlist, e chan string) {
 	}
 }
 
+/* Переделки и недоделки
+Функцию следующего трека надо переделать.
+сделав канал чек пренимающим значения типа инт
+после чего в цикле плейлиста присвоить переменной i
+значение возвращаемое каналом чек.
+В сам канал в зависимости от функции next or prev передаются значения i+1,i-1
+
+необходимо написать функцию которая из внешнего файла будет брать список треков
+и добавлять их в структуру плейлист
+
+починить addsong
+
+написать функцию которая переводит входящие сообщения от пользователя в нижний регистр
+*/
 // Добавляем трек в конец (не работает)
 func (a playlist) AddSong() playlist {
 	var b sound
@@ -120,6 +138,6 @@ func (a playlist) AddSong() playlist {
 }
 func main() {
 	e := make(chan string)
-	var arr playlist = []sound{{"a", 23}, {"a1", 21}, {"a3", 23}, {"a1w", 21}}
+	var arr playlist = []sound{{"audio 1", 23}, {"audio 2", 21}, {"audio 3", 23}, {"audio 4", 21}}
 	PlayAll(arr, e)
 }
