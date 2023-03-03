@@ -102,7 +102,7 @@ func PlayAll(arr playlist, e chan string) {
 	fmt.Println("pause - дял паузы")
 	fmt.Println("add - для добавления трека в конец")
 	fmt.Println("next - для следующего трека")
-	fmt.Println("exit - для следующего трека")
+	fmt.Println("exit - для выхода")
 	var a, p string
 	check := make(chan bool)
 	for _, v := range arr {
