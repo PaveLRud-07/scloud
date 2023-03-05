@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"time"
 )
@@ -9,8 +12,8 @@ import (
 //структура трека
 
 type sound struct {
-	name     string
-	duration int
+	Name     string
+	Duration int
 }
 
 // создал структуру для хранения  плейлиста
@@ -48,7 +51,10 @@ func buttons(a string, arr *playlist, c chan bool, e chan string) {
 	case "play":
 		fmt.Print("play")
 	case "exit":
+		writeMusic(*arr)
 		os.Exit(0)
+	default:
+		fmt.Print(".")
 	}
 }
 
@@ -56,8 +62,8 @@ func buttons(a string, arr *playlist, c chan bool, e chan string) {
 // в случае если получаем команду пауза
 // ждём пока на вход подадут другую команду
 func Play(a sound, e chan string, check chan bool) {
-	fmt.Print("playing ", a.name)
-	for i := 0; time.Second*time.Duration(i) < time.Second*time.Duration(a.duration); {
+	fmt.Print("playing ", a.Name)
+	for i := 0; time.Second*time.Duration(i) < time.Second*time.Duration(a.Duration); {
 		for {
 			if <-e != "pause" {
 				time.Sleep(2 * time.Second)
@@ -68,28 +74,29 @@ func Play(a sound, e chan string, check chan bool) {
 				fmt.Printf("...\n")
 				i = i + 1
 				//проверка на время воспроизвидения трека
-				if time.Second*time.Duration(i) <= time.Second*time.Duration(a.duration) {
+				if time.Second*time.Duration(i) <= time.Second*time.Duration(a.Duration) {
 					break
 				}
 			}
 		}
-		if time.Second*time.Duration(i) <= time.Second*time.Duration(a.duration) {
+		if time.Second*time.Duration(i) <= time.Second*time.Duration(a.Duration) {
 			check <- true
 		}
 	}
 }
 
 // создаём горутину что бы проерять введёную команду или её отсутствие
-func chekButton(e chan string, a, p *string, arr *playlist, c chan bool) {
+func chekButton(e chan string, a, p *string, arr playlist, c chan bool) {
 	for {
 		//получаем текстовую команду
 		*a = sscan(*a, *&p)
 
 		//проверяем введёную команду
-		buttons(*a, *&arr, c, e)
+		buttons(*a, &arr, c, e)
 		//блок исключений
-		if *a == "next" || *a == "add" || *a == "play" || *a == "a" {
+		if *a != "pause" {
 			e <- "a"
+			return
 		}
 		e <- *a
 	}
@@ -107,7 +114,7 @@ func PlayAll(arr playlist, e chan string) {
 	check := make(chan bool)
 	for _, v := range arr {
 		go Play(v, e, check)
-		go chekButton(e, &a, &p, &arr, check)
+		go chekButton(e, &a, &p, arr, check)
 		//если в канал чек переданно значение
 		//трек закончил воспроизведение и начинается воспроизвидение следующего трека
 		<-check
@@ -121,23 +128,62 @@ func PlayAll(arr playlist, e chan string) {
 значение возвращаемое каналом чек.
 В сам канал в зависимости от функции next or prev передаются значения i+1,i-1
 
-необходимо написать функцию которая из внешнего файла будет брать список треков
-и добавлять их в структуру плейлист(добавить некст в данный файл)
-
 починить addsong
 
 написать функцию которая переводит входящие сообщения от пользователя в нижний регистр
 */
 // Добавляем трек в конец (не работает)
-func (a playlist) AddSong() playlist {
+func (a *playlist) AddSong() playlist {
 	var b sound
 	fmt.Println("Введите название трека и его дляительность")
-	fmt.Scan(&b.name, &b.duration)
-	a = append(a, b)
-	return a
+	fmt.Scan(&b.Name, &b.Duration)
+	*a = append(*a, b)
+	return *a
 }
+
+// загружаем из json файла информацию о треке
+// и записываем их в массив стрктур
+func loadMusik() []sound {
+	fileName, err := os.Open("music.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer fileName.Close()
+
+	data, err := ioutil.ReadAll(fileName)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var result []sound
+
+	jsonErr := json.Unmarshal(data, &result)
+
+	if jsonErr != nil {
+		log.Fatal(jsonErr)
+	}
+	return result
+}
+
+// записываем в json файл новый плейлист
+func writeMusic(arr []sound) {
+	json_data, err := json.Marshal(arr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	file, err := os.OpenFile("music.json", os.O_RDWR|os.O_TRUNC, 0775)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Write(json_data)
+}
+
 func main() {
 	e := make(chan string)
-	var arr playlist = []sound{{"audio 1", 23}, {"audio 2", 21}, {"audio 3", 23}, {"audio 4", 21}}
+	arr := loadMusik()
 	PlayAll(arr, e)
 }
